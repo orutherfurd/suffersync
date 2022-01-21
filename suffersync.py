@@ -206,7 +206,7 @@ def main():
             INTERVALS_ICU_APIKEY = config.get('INTERVALS.ICU', 'INTERVALS_ICU_APIKEY')
             # these are not written into the sample config file
             SAVE_JSON = config.getint('DEBUG', 'SAVE_JSON', fallback=0)
-            DISABLE_UPLOAD = config.get('DEBUG', 'DISABLE_UPLOAD', fallback=0)
+            DISABLE_UPLOAD = config.getint('DEBUG', 'DISABLE_UPLOAD', fallback=0)
         except KeyError as err:
             print(f'No valid value found for key {err} in {CONFIGFILE}.')
             sys.exit(1)
