@@ -291,7 +291,9 @@ def main():
 
                 if UPLOAD_DESCRIPTION:
                     description = workout_json['data']['workouts'][0]['details']
-                    description = escape_xml(description)
+                    # Some workouts seem to have no description, for example:
+                    # Wolfpack Insider: Tour de France
+                    description = escape_xml(description) if description else ''
 
                 # 'triggers' contains the FTP values for the workout
                 workout_json = workout_json['data']['workouts'][0]['triggers']
