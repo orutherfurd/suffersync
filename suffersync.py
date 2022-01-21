@@ -204,6 +204,9 @@ def main():
             END_DATE = config.get('WAHOO', 'END_DATE')
             INTERVALS_ICU_ID = config.get('INTERVALS.ICU', 'INTERVALS_ICU_ID')
             INTERVALS_ICU_APIKEY = config.get('INTERVALS.ICU', 'INTERVALS_ICU_APIKEY')
+            # these are not written into the sample config file
+            SAVE_JSON = config.getint('DEBUG', 'SAVE_JSON', fallback=0)
+            DISABLE_UPLOAD = config.get('DEBUG', 'DISABLE_UPLOAD', fallback=0)
         except KeyError as err:
             print(f'No valid value found for key {err} in {CONFIGFILE}.')
             sys.exit(1)
@@ -249,6 +252,19 @@ def main():
                 # Skip workouts without detail and Mental Training workouts.
                 if workout_id == '' or workout_type == 'MentalTraining':
                     continue
+
+                # Get specific workout
+                workout_detail = get_systm_workout(SYSTM_URL, systm_token, workout_id)
+                # Workout details contain nested JSON, so use clean_workout() to handle this.
+                workout_json = clean_workout(workout_detail)
+
+                if SAVE_JSON:
+                    filename_json = f'./zwo/{filename}.json'
+                    os.makedirs(os.path.dirname(filename_json), exist_ok=True)
+                    # save JSON to make troubleshooting easier
+                    with open(filename_json, 'w') as jf:
+                        json.dump(workout_json, jf, indent=1)
+
                 # Non-ride workouts (run, strength, yoga) contain no information apart from duration and name, upload separately.
                 if sport != 'Ride':
                     date = f'{dt_workout_date_short}T00:00:00'
@@ -264,25 +280,22 @@ def main():
                     elif sport == 'Swim' and not UPLOAD_SWIM_WORKOUTS:
                         continue
                     else:
-                        response = upload_to_intervals_icu(date, workout_name, sport, INTERVALS_ICU_ID, INTERVALS_ICU_APIKEY, description=description, moving_time=moving_time)
-                        if response.status_code == 200:
-                            print(f'Uploaded {dt_workout_date_short}: {workout_name} ({sport})')
+                        if DISABLE_UPLOAD:
+                            print(f'Uploading disabled, not uploading {dt_workout_date_short}: {workout_name} ({sport})')
+                        else:
+                            response = upload_to_intervals_icu(date, workout_name, sport, INTERVALS_ICU_ID, INTERVALS_ICU_APIKEY, description=description, moving_time=moving_time)
+                            if response.status_code == 200:
+                                print(f'Uploaded {dt_workout_date_short}: {workout_name} ({sport})')
                         continue
 
             except Exception as err:
                 print(f'Error: {err}')
-
-            # Get specific workout
-            workout_detail = get_systm_workout(SYSTM_URL, systm_token, workout_id)
 
             # Create .zwo files with workout details
             filename_zwo = f'./zwo/{filename}.zwo'
             os.makedirs(os.path.dirname(filename_zwo), exist_ok=True)
 
             try:
-                # Workout details contain nested JSON, so use clean_workout() to handle this.
-                workout_json = clean_workout(workout_detail)
-
                 if sport == 'Ride':
                     sporttype = 'bike'
 
@@ -362,9 +375,12 @@ def main():
                 file_contents = zwo_file.read()
 
                 if date >= today or UPLOAD_PAST_WORKOUTS:
-                    response = upload_to_intervals_icu(file_date, intervals_filename, sport, INTERVALS_ICU_ID, INTERVALS_ICU_APIKEY, contents=file_contents)
-                    if response.status_code == 200:
-                        print(f'Uploaded {date_short}: {intervals_filename} ({sport})')
+                    if DISABLE_UPLOAD:
+                        print(f'Uploading disabled, not uploading {date_short}: {intervals_filename} ({sport})')
+                    else:
+                        response = upload_to_intervals_icu(file_date, intervals_filename, sport, INTERVALS_ICU_ID, INTERVALS_ICU_APIKEY, contents=file_contents)
+                        if response.status_code == 200:
+                            print(f'Uploaded {date_short}: {intervals_filename} ({sport})')
 
                 zwo_file.close()
             except Exception as err:
