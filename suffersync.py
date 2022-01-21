@@ -227,6 +227,9 @@ def main():
         sys.exit(1)
 
     workouts = workouts['data']['userPlan']
+    if SAVE_JSON:
+        with open(f'workouts-{START_DATE}-to-{END_DATE}.json', 'w') as f:
+            json.dump(workouts, f, indent=1)
 
     # For each workout, make sure there's a "plannedDate" field to avoid bogus entries.
     for item in workouts:
